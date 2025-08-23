@@ -21,6 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { notesStorage, type Note } from "@/lib/localStorage";
 import NoteCard from "@/components/NoteCard";
+import ShareDialog from "@/components/ShareDialog";
 
 interface NotesListProps {
   onNoteSelect: (id: string) => void;
@@ -43,6 +44,8 @@ export default function NotesList({
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareNote, setShareNote] = useState<Note | null>(null);
 
   useEffect(() => {
     loadNotes();
@@ -142,34 +145,8 @@ export default function NotesList({
   const handleShareNote = (id: string) => {
     const note = notesStorage.getNoteById(id);
     if (note) {
-      if (note.isPublic) {
-        const shareUrl = `${window.location.origin}/note/${note.id}`;
-        navigator.clipboard.writeText(shareUrl);
-        const event = new CustomEvent("show-toast", {
-          detail: {
-            message: "Public note link copied to clipboard!",
-            type: "success",
-          },
-        });
-        window.dispatchEvent(event);
-      } else {
-        const shareText = `${note.title}\n\n${note.content}`;
-        if (navigator.share) {
-          navigator.share({
-            title: note.title,
-            text: shareText,
-          });
-        } else {
-          navigator.clipboard.writeText(shareText);
-          const event = new CustomEvent("show-toast", {
-            detail: {
-              message: "Note content copied to clipboard",
-              type: "success",
-            },
-          });
-          window.dispatchEvent(event);
-        }
-      }
+      setShareNote(note);
+      setShareDialogOpen(true);
     }
   };
 
@@ -383,6 +360,14 @@ export default function NotesList({
       >
         +
       </Button>
+      {shareNote && (
+        <ShareDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          note={shareNote}
+          setNote={setShareNote}
+        />
+      )}
     </div>
   );
 }

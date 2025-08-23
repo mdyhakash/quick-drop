@@ -195,9 +195,9 @@ export default function NoteCard({
           </p>
         )}
 
-        {note.tags.length > 0 && (
+        {(note.tags || []).length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
-            {note.tags.slice(0, 4).map((tag, index) => {
+            {(note.tags || []).slice(0, 4).map((tag, index) => {
               const tagColors = [
                 "bg-purple-100 text-purple-700 border-purple-200",
                 "bg-pink-100 text-pink-700 border-pink-200",
@@ -216,12 +216,12 @@ export default function NoteCard({
                 </Badge>
               );
             })}
-            {note.tags.length > 4 && (
+            {(note.tags || []).length > 4 && (
               <Badge
                 variant="outline"
                 className="text-xs bg-slate-100 text-slate-600"
               >
-                +{note.tags.length - 4}
+                +{(note.tags || []).length - 4}
               </Badge>
             )}
           </div>

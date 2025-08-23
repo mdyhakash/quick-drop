@@ -27,6 +27,7 @@ interface NoteEditorProps {
     content: string;
     pinned: boolean;
     isPublic: boolean;
+    category?: string;
   };
   onSave: (note: any) => void;
   onCancel: () => void;
@@ -52,6 +53,7 @@ export default function NoteEditor({
   const [charCount, setCharCount] = useState(0);
   const [lineCount, setLineCount] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
+  const [category, setCategory] = useState(initialNote?.category || "code");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -156,6 +158,7 @@ export default function NoteEditor({
         content: content.trim(),
         pinned,
         isPublic,
+        category,
       };
 
       onSave(noteData);
@@ -279,6 +282,22 @@ export default function NoteEditor({
             checked={isPublic}
             onCheckedChange={setIsPublic}
           />
+        </div>
+
+        <div>
+          <Label htmlFor="category">Category</Label>
+          <select
+            id="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className={`mt-1 w-full rounded border px-3 py-2 bg-background text-foreground ${
+              isMobile ? "h-12" : ""
+            }`}
+          >
+            <option value="code">Code</option>
+            <option value="json">JSON</option>
+            <option value="text">Text</option>
+          </select>
         </div>
       </div>
 

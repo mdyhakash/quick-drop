@@ -9,17 +9,22 @@ export const exportNoteToPDF = async (note: {
   updatedAt: string;
 }) => {
   try {
+    console.log("Starting PDF export for note:", note.title);
+
     // Dynamic import to avoid SSR issues
     const { jsPDF } = await import("jspdf");
+    console.log("jsPDF library loaded successfully");
 
     const doc = new jsPDF();
+    console.log("PDF document created");
+
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
     const margin = 20;
     const maxWidth = pageWidth - 2 * margin;
     let yPosition = margin;
 
-    // Helper function to add text with word wrapping
+    // Helper function to add text with proper word wrapping and page management
     const addWrappedText = (text: string, fontSize: number, isBold = false) => {
       doc.setFontSize(fontSize);
       if (isBold) {
@@ -28,26 +33,33 @@ export const exportNoteToPDF = async (note: {
         doc.setFont(undefined, "normal");
       }
 
+      // Split text into lines that fit the page width
       const lines = doc.splitTextToSize(text, maxWidth);
 
-      // Check if we need a new page
-      if (yPosition + lines.length * fontSize * 0.4 > pageHeight - margin) {
-        doc.addPage();
-        yPosition = margin;
-      }
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const lineHeight = fontSize * 0.4;
 
-      doc.text(lines, margin, yPosition);
-      yPosition += lines.length * fontSize * 0.4 + 5;
+        // Check if we need a new page before adding this line
+        if (yPosition + lineHeight > pageHeight - margin) {
+          doc.addPage();
+          yPosition = margin;
+        }
+
+        // Add the line
+        doc.text(line, margin, yPosition);
+        yPosition += lineHeight + 2; // Add small spacing between lines
+      }
     };
 
     // Add title
     addWrappedText(note.title, 20, true);
-    yPosition += 5;
+    yPosition += 10;
 
     // Add description if exists
     if (note.description) {
       addWrappedText(note.description, 12);
-      yPosition += 5;
+      yPosition += 10;
     }
 
     // Add metadata
@@ -66,7 +78,7 @@ export const exportNoteToPDF = async (note: {
     doc.setTextColor(100, 100, 100);
 
     metadata.forEach((line) => {
-      if (yPosition > pageHeight - margin) {
+      if (yPosition + 12 > pageHeight - margin) {
         doc.addPage();
         yPosition = margin;
       }
@@ -76,7 +88,7 @@ export const exportNoteToPDF = async (note: {
 
     // Add separator
     yPosition += 10;
-    if (yPosition > pageHeight - margin) {
+    if (yPosition + 15 > pageHeight - margin) {
       doc.addPage();
       yPosition = margin;
     }
@@ -84,53 +96,68 @@ export const exportNoteToPDF = async (note: {
     doc.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 15;
 
-    // Add content
+    // Add content with better handling
     doc.setTextColor(0, 0, 0);
+    doc.setFontSize(11);
+
     if (note.content) {
-      // Better markdown to plain text conversion for PDF that preserves more content
+      console.log("Original content length:", note.content.length);
+
+      // Convert markdown to plain text while preserving structure
       const plainContent = note.content
-        // Preserve headers with formatting
+        // Preserve headers with clear formatting
         .replace(/^#{6}\s(.+)$/gm, "      $1")
         .replace(/^#{5}\s(.+)$/gm, "     $1")
         .replace(/^#{4}\s(.+)$/gm, "    $1")
         .replace(/^#{3}\s(.+)$/gm, "   $1")
         .replace(/^#{2}\s(.+)$/gm, "  $1")
         .replace(/^#{1}\s(.+)$/gm, " $1")
-        // Preserve bold and italic with different formatting
-        .replace(/\*\*\*(.*?)\*\*\*/g, "***$1***") // Bold italic
-        .replace(/\*\*(.*?)\*\*/g, "**$1**") // Bold
-        .replace(/\*(.*?)\*/g, "*$1*") // Italic
+        // Preserve bold and italic formatting
+        .replace(/\*\*\*(.*?)\*\*\*/g, "***$1***")
+        .replace(/\*\*(.*?)\*\*/g, "**$1**")
+        .replace(/\*(.*?)\*/g, "*$1*")
         // Preserve inline code
-        .replace(/`(.*?)`/g, "[$1]") // Inline code in brackets
-        // Better code block handling - preserve the content
+        .replace(/`(.*?)`/g, "[$1]")
+        // Better code block handling
         .replace(/```[\w]*\n([\s\S]*?)```/g, (match, code) => {
           return (
             "\n--- CODE BLOCK ---\n" + code.trim() + "\n--- END CODE ---\n"
           );
         })
         // Convert links to readable format
-        .replace(/\[([^\]]+)\]$$([^)]+)$$/g, "$1 ($2)") // Convert links to "text (url)"
+        .replace(/\[([^\]]+)\]$$([^)]+)$$/g, "$1 ($2)")
         // Better list handling
-        .replace(/^[-*+]\s(.+)$/gm, "• $1") // Convert list items
+        .replace(/^[-*+]\s(.+)$/gm, "• $1")
         .replace(/^\d+\.\s(.+)$/gm, (match, text, offset, string) => {
           const lineNum =
             (string.substring(0, offset).match(/^\d+\./gm) || []).length + 1;
           return `${lineNum}. ${text}`;
-        }) // Convert numbered lists with proper numbering
+        })
         // Convert blockquotes
-        .replace(/^>\s(.+)$/gm, "» $1") // Convert blockquotes
+        .replace(/^>\s(.+)$/gm, "» $1")
         // Clean up extra whitespace but preserve intentional line breaks
-        .replace(/\n{3,}/g, "\n\n") // Limit consecutive line breaks
+        .replace(/\n{3,}/g, "\n\n")
         .trim();
 
+      console.log("Processed content length:", plainContent.length);
+      console.log("Content preview:", plainContent.substring(0, 200) + "...");
+
+      // Process the entire content as one block to ensure nothing is lost
       addWrappedText(plainContent, 11);
     }
 
-    // Save the PDF
-    const fileName = `${note.title
-      .replace(/[^a-z0-9]/gi, "_")
-      .toLowerCase()}.pdf`;
+    // Save the PDF with proper filename
+    const fileName = `${note.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}_${
+      new Date().toISOString().split("T")[0]
+    }.pdf`;
+
+    console.log("Saving PDF with filename:", fileName);
+    console.log("Total pages in PDF:", doc.getNumberOfPages());
+
+    // Use save() method to trigger download
     doc.save(fileName);
+
+    console.log("PDF save operation completed");
 
     return true;
   } catch (error) {

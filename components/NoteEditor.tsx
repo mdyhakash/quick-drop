@@ -7,26 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 
 interface NoteEditorProps {
   initialNote?: {
     id?: string;
     title: string;
-    description: string;
     content: string;
-    pinned: boolean;
-    isPublic: boolean;
     category?: string;
   };
   onSave: (note: any) => void;
@@ -41,19 +28,13 @@ export default function NoteEditor({
   isEditing = false,
 }: NoteEditorProps) {
   const [title, setTitle] = useState(initialNote?.title || "");
-  const [description, setDescription] = useState(
-    initialNote?.description || ""
-  );
   const [content, setContent] = useState(initialNote?.content || "");
-  const [pinned, setPinned] = useState(initialNote?.pinned || false);
-  const [isPublic, setIsPublic] = useState(initialNote?.isPublic || false);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
   const [wordCount, setWordCount] = useState(0);
   const [charCount, setCharCount] = useState(0);
   const [lineCount, setLineCount] = useState(0);
-  const [showSettings, setShowSettings] = useState(false);
-  const [category, setCategory] = useState(initialNote?.category || "code");
+  const [category, setCategory] = useState(initialNote?.category || "text");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -62,22 +43,14 @@ export default function NoteEditor({
       ? `notebook-edit-note-draft-${initialNote?.id}`
       : "notebook-new-note-draft";
     const interval = setInterval(() => {
-      if (title || description || content) {
-        const draft = { title, description, content, pinned, isPublic };
+      if (title || content) {
+        const draft = { title, content };
         localStorage.setItem(draftKey, JSON.stringify(draft));
       }
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [
-    title,
-    description,
-    content,
-    pinned,
-    isPublic,
-    isEditing,
-    initialNote?.id,
-  ]);
+  }, [title, content, isEditing, initialNote?.id]);
 
   useEffect(() => {
     if (!isEditing) {
@@ -87,10 +60,7 @@ export default function NoteEditor({
         try {
           const draft = JSON.parse(savedDraft);
           setTitle(draft.title || "");
-          setDescription(draft.description || "");
           setContent(draft.content || "");
-          setPinned(draft.pinned || false);
-          setIsPublic(draft.isPublic || false);
         } catch (error) {
           console.error("Failed to load draft:", error);
         }
@@ -106,30 +76,10 @@ export default function NoteEditor({
     setLineCount(lines);
   }, [content]);
 
-  const generateTitleFromContent = (content: string) => {
-    if (!content.trim()) return "";
-
-    const firstLine = content.split("\n")[0].trim();
-    if (firstLine.length > 0) {
-      return firstLine.length > 50
-        ? firstLine.substring(0, 50) + "..."
-        : firstLine;
-    }
-
-    return `Note ${new Date().toLocaleDateString()}`;
-  };
-
-  useEffect(() => {
-    if (!title && content.trim()) {
-      const autoTitle = generateTitleFromContent(content);
-      setTitle(autoTitle);
-    }
-  }, [content, title]);
-
   const handleSave = async () => {
     let finalTitle = title.trim();
-    if (!finalTitle && content.trim()) {
-      finalTitle = generateTitleFromContent(content);
+    if (!finalTitle) {
+      finalTitle = `Note ${new Date().toLocaleDateString()}`;
       setTitle(finalTitle);
     }
 
@@ -144,20 +94,12 @@ export default function NoteEditor({
       return;
     }
 
-    if (!finalTitle) {
-      finalTitle = `Note ${new Date().toLocaleDateString()}`;
-      setTitle(finalTitle);
-    }
-
     setIsSaving(true);
     try {
       const noteData = {
         ...(initialNote?.id && { id: initialNote.id }),
         title: finalTitle,
-        description: description.trim(),
         content: content.trim(),
-        pinned,
-        isPublic,
         category,
       };
 
@@ -194,10 +136,7 @@ export default function NoteEditor({
   const handleCancel = () => {
     const hasChanges =
       title !== (initialNote?.title || "") ||
-      description !== (initialNote?.description || "") ||
-      content !== (initialNote?.content || "") ||
-      pinned !== (initialNote?.pinned || false) ||
-      isPublic !== (initialNote?.isPublic || false);
+      content !== (initialNote?.content || "");
 
     if (hasChanges) {
       const event = new CustomEvent("show-confirmation", {
@@ -235,82 +174,6 @@ export default function NoteEditor({
     );
   };
 
-  const SettingsPanel = ({ isMobile = false }) => (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="title">Title</Label>
-        <Input
-          id="title"
-          placeholder="Auto-generated from content or enter manually..."
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className={`mt-1 ${isMobile ? "h-12" : ""}`}
-        />
-        <p className="text-xs text-muted-foreground mt-1">
-          💡 Tip: Just paste your content and save - title will be
-          auto-generated!
-        </p>
-      </div>
-
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Input
-          id="description"
-          placeholder="Brief description (optional)..."
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className={`mt-1 ${isMobile ? "h-12" : ""}`}
-        />
-      </div>
-
-      <Separator />
-
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="pinned" className={isMobile ? "text-base" : ""}>
-            Pin note
-          </Label>
-          <Switch id="pinned" checked={pinned} onCheckedChange={setPinned} />
-        </div>
-
-        <div className="flex items-center justify-between">
-          <Label htmlFor="public" className={isMobile ? "text-base" : ""}>
-            Make public
-          </Label>
-          <Switch
-            id="public"
-            checked={isPublic}
-            onCheckedChange={setIsPublic}
-          />
-        </div>
-
-        <div>
-          <Label htmlFor="category">Category</Label>
-          <select
-            id="category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className={`mt-1 w-full rounded border px-3 py-2 bg-background text-foreground ${
-              isMobile ? "h-12" : ""
-            }`}
-          >
-            <option value="code">Code</option>
-            <option value="json">JSON</option>
-            <option value="text">Text</option>
-          </select>
-        </div>
-      </div>
-
-      <Separator />
-
-      <div className="text-sm text-muted-foreground space-y-1">
-        <div>Words: {wordCount}</div>
-        <div>Characters: {charCount}</div>
-        <div>Lines: {lineCount}</div>
-      </div>
-    </div>
-  );
-
   const LineNumbers = ({ content }: { content: string }) => {
     const lines = content ? content.split("\n") : [""];
 
@@ -347,21 +210,6 @@ export default function NoteEditor({
               </p>
             </div>
           </div>
-          <Sheet open={showSettings} onOpenChange={setShowSettings}>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="sm">
-                Settings
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:w-80">
-              <SheetHeader>
-                <SheetTitle>Note Settings</SheetTitle>
-              </SheetHeader>
-              <div className="mt-6">
-                <SettingsPanel isMobile />
-              </div>
-            </SheetContent>
-          </Sheet>
         </div>
       </div>
 
@@ -379,92 +227,133 @@ export default function NoteEditor({
               {isEditing ? "Edit Note" : "Create New Note"}
             </h1>
             <p className="text-sm text-muted-foreground">
-              Auto-saves as draft every 2 seconds • Paste content for instant
-              title generation
+              Auto-saves as draft every 2 seconds
             </p>
           </div>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
-                <CardTitle>Note Details</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SettingsPanel />
-              </CardContent>
-            </Card>
-          </div>
+        <div className="max-w-4xl mx-auto">
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Note Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label htmlFor="title" className="text-sm font-medium">
+                  Title
+                </label>
+                <Input
+                  id="title"
+                  placeholder="Enter note title..."
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
 
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>Content</CardTitle>
-                  <Tabs
-                    value={activeTab}
-                    onValueChange={(value) =>
-                      setActiveTab(value as "write" | "preview")
-                    }
-                  >
-                    <TabsList>
-                      <TabsTrigger value="write">Write</TabsTrigger>
-                      <TabsTrigger value="preview">Preview</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <Tabs value={activeTab} className="w-full">
-                  <TabsContent value="write" className="space-y-4">
-                    <div className="flex border rounded-lg overflow-hidden">
-                      <LineNumbers content={content} />
-                      <Textarea
-                        ref={textareaRef}
-                        placeholder="Write your note content here..."
-                        value={content}
-                        onChange={(e) => setContent(e.target.value)}
-                        className="min-h-[400px] resize-y font-mono text-sm border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                      />
-                    </div>
-                  </TabsContent>
-                  <TabsContent value="preview">
-                    <div className="min-h-[400px] p-4 border rounded-lg bg-background">
-                      {renderPlainContent(content)}
-                    </div>
-                  </TabsContent>
+              <div>
+                <label htmlFor="category" className="text-sm font-medium">
+                  Category
+                </label>
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className="mt-1 w-full rounded border px-3 py-2 bg-background text-foreground"
+                >
+                  <option value="text">Text</option>
+                  <option value="code">Code</option>
+                  <option value="json">JSON</option>
+                </select>
+              </div>
+
+              <div className="text-sm text-muted-foreground space-y-1 pt-2 border-t">
+                <div>Words: {wordCount}</div>
+                <div>Characters: {charCount}</div>
+                <div>Lines: {lineCount}</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Content</CardTitle>
+                <Tabs
+                  value={activeTab}
+                  onValueChange={(value) =>
+                    setActiveTab(value as "write" | "preview")
+                  }
+                >
+                  <TabsList>
+                    <TabsTrigger value="write">Write</TabsTrigger>
+                    <TabsTrigger value="preview">Preview</TabsTrigger>
+                  </TabsList>
                 </Tabs>
-              </CardContent>
-            </Card>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={activeTab} className="w-full">
+                <TabsContent value="write" className="space-y-4">
+                  <div className="flex border rounded-lg overflow-hidden">
+                    <LineNumbers content={content} />
+                    <Textarea
+                      ref={textareaRef}
+                      placeholder="Write your note content here..."
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      className="min-h-[400px] resize-y font-mono text-sm border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                  </div>
+                </TabsContent>
+                <TabsContent value="preview">
+                  <div className="min-h-[400px] p-4 border rounded-lg bg-background">
+                    {renderPlainContent(content)}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
 
-            <div className="flex gap-3 mt-6">
-              <Button
-                onClick={handleSave}
-                disabled={isSaving}
-                className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-              >
-                {isSaving
-                  ? "Saving..."
-                  : isEditing
-                  ? "Save Changes"
-                  : "Save Note"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleCancel}
-                disabled={isSaving}
-                className="h-12 px-6 bg-gradient-to-r from-rose-500 to-pink-500 text-white border-0 hover:from-rose-600 hover:to-pink-600"
-              >
-                Cancel
-              </Button>
-            </div>
+          <div className="flex gap-3 mt-6">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+            >
+              {isSaving
+                ? "Saving..."
+                : isEditing
+                ? "Save Changes"
+                : "Save Note"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSaving}
+              className="h-12 px-6 bg-gradient-to-r from-rose-500 to-pink-500 text-white border-0 hover:from-rose-600 hover:to-pink-600"
+            >
+              Cancel
+            </Button>
           </div>
         </div>
       </div>
 
       <div className="md:hidden">
         <div className="p-4">
+          <div className="mb-4">
+            <label htmlFor="mobile-title" className="text-sm font-medium">
+              Title
+            </label>
+            <Input
+              id="mobile-title"
+              placeholder="Enter note title..."
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+
           <Tabs
             value={activeTab}
             onValueChange={(value) =>

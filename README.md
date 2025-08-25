@@ -34,11 +34,6 @@ A modern, mobile-first note-taking application built with Next.js, featuring a s
 - Local-only persistence using `localStorage`
 - Active notes exclude drafts and deleted items
 
-## ❌ Removed or Changed
-
-- Public sharing and all share-related logic and buttons
-- Confirmation dialogs for delete (replaced with immediate delete + success toast)
-- Auto-generate title from content (manual title; drafts default to "Draft")
 
 ## 🚀 Getting Started
 

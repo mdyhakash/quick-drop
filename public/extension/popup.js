@@ -2,26 +2,42 @@ document.addEventListener("DOMContentLoaded", () => {
   const openBtn = document.getElementById("open");
   const devLink = document.getElementById("options");
 
-  // Default to production origin relative to extension popup
-  const PROD_URL = "https://quick-drop.app"; // change if you deploy elsewhere
-  const DEV_URL = "http://localhost:3000";
+  // Default to your hosted app
+  const PROD_URL = "https://quick-drop-xi.vercel.app/"; // provided hosting URL
 
-  const getTargetUrl = async () => {
-    // Prefer dev when it's running; otherwise use prod
-    try {
-      const res = await fetch(DEV_URL, { method: "HEAD", cache: "no-store" });
-      if (res.ok) return DEV_URL;
-    } catch {}
-    return PROD_URL;
-  };
+  const getTargetUrl = async () => PROD_URL;
 
   openBtn.addEventListener("click", async () => {
     const url = await getTargetUrl();
-    chrome.tabs.create({ url });
+    // Reuse existing Quick Drop window if one is already open
+    const [origin] = url.split("?", 1);
+    const targetOrigins = [origin.replace(/\/$/, "")];
+
+    chrome.windows.getAll({ populate: true }, (wins) => {
+      for (const w of wins) {
+        for (const t of w.tabs || []) {
+          const tabUrl = (t.url || "").replace(/\/$/, "");
+          if (targetOrigins.some((o) => tabUrl.startsWith(o))) {
+            // Focus existing window/tab
+            if (w.id) chrome.windows.update(w.id, { focused: true });
+            if (t.id) chrome.tabs.update(t.id, { active: true });
+            return;
+          }
+        }
+      }
+      // Otherwise open as a floating popup window for quick note taking
+      chrome.windows.create({
+        url,
+        type: "popup",
+        width: 520,
+        height: 840,
+        focused: true,
+      });
+    });
   });
 
   devLink.addEventListener("click", (e) => {
     e.preventDefault();
-    chrome.tabs.create({ url: DEV_URL });
+    // Dev link removed; keep no-op to avoid errors if element exists
   });
 });

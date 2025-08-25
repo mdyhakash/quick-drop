@@ -12,6 +12,7 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { notesStorage, type Note } from "@/lib/localStorage";
 import { exportNoteToPDF } from "@/lib/pdfExport";
 import { Edit, Trash2, Calendar, Copy, X, Download } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import ContentWithLineNumbers from "@/components/ContentWithLineNumbers";
 import { useRef } from "react";
 
@@ -358,10 +359,11 @@ export default function NoteModal({
             <div className="flex items-center gap-4">
               <Button
                 onClick={handleCancel}
-                variant="outline"
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+                variant="ghost"
+                className="h-10 w-10 p-0 text-white hover:bg-white/10"
+                title={isEditing ? "Cancel" : "Close"}
               >
-                {isEditing ? "← Cancel" : "← Close"}
+                <ArrowLeft className="h-5 w-5" />
               </Button>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-white">

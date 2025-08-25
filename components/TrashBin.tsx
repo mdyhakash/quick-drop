@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -187,8 +188,13 @@ export default function TrashBin({ onBack }: TrashBinProps) {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={onBack}>
-              Back
+            <Button
+              variant="ghost"
+              onClick={onBack}
+              className="h-10 w-10 p-0"
+              title="Back"
+            >
+              <ArrowLeft className="h-5 w-5" />
             </Button>
             {deletedNotes.length > 0 && (
               <Button variant="destructive" onClick={handleEmptyTrash}>

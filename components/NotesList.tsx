@@ -231,7 +231,7 @@ export default function NotesList({
   };
 
   return (
-    <div className="px-3 py-3 sm:p-4 max-w-6xl mx-auto">
+    <div className="px-3 py-3 pb-16 sm:pb-4 sm:p-4 max-w-6xl mx-auto">
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -252,6 +252,14 @@ export default function NotesList({
             className="hidden md:flex bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
           >
             New Note
+          </Button>
+          <Button
+            onClick={() => {
+              window.location.href = "/new";
+            }}
+            className="md:hidden h-9 px-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+          >
+            New
           </Button>
         </div>
 
@@ -511,6 +519,18 @@ export default function NotesList({
           ))}
         </div>
       )}
+
+      {/* Small Floating New Button for Mobile */}
+      <Button
+        onClick={() => {
+          window.location.href = "/new";
+        }}
+        className="fixed bottom-3 right-3 h-10 w-10 rounded-full shadow-lg z-50 md:hidden bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
+        size="icon"
+        title="New Note"
+      >
+        +
+      </Button>
 
       {/* FAB removed for mobile to hide bottom UI */}
 

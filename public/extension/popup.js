@@ -47,8 +47,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  devLink.addEventListener("click", (e) => {
-    e.preventDefault();
-    // Dev link removed; keep no-op to avoid errors if element exists
-  });
+  // devLink.addEventListener("click", (e) => {
+  //   e.preventDefault();
+  //   // Dev link removed; keep no-op to avoid errors if element exists
+  // });
 });

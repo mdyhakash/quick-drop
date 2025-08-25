@@ -21,14 +21,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { notesStorage, type Note } from "@/lib/localStorage";
 import NoteCard from "@/components/NoteCard";
-import ShareDialog from "@/components/ShareDialog";
 
 interface NotesListProps {
   onNoteSelect: (id: string) => void;
   onNoteEdit: (id: string) => void;
 }
 
-type SortOption = "updated" | "created" | "title" | "category";
+type SortOption = "recent" | "code" | "text" | "json";
 
 export default function NotesList({
   onNoteSelect,
@@ -38,14 +37,12 @@ export default function NotesList({
   const [notes, setNotes] = useState<Note[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredNotes, setFilteredNotes] = useState<Note[]>([]);
-  const [sortBy, setSortBy] = useState<SortOption>("updated");
+  const [sortBy, setSortBy] = useState<SortOption>("recent");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  const [shareDialogOpen, setShareDialogOpen] = useState(false);
-  const [shareNote, setShareNote] = useState<Note | null>(null);
 
   useEffect(() => {
     loadNotes();
@@ -57,6 +54,9 @@ export default function NotesList({
 
   const loadNotes = () => {
     const allNotes = notesStorage.getActiveNotes();
+    const draftNotes = notesStorage.getDraftNotes();
+    console.log("Loaded notes:", allNotes.length);
+    console.log("Loaded drafts:", draftNotes.length);
     setNotes(allNotes);
 
     // Extract unique categories and tags
@@ -65,11 +65,16 @@ export default function NotesList({
     ];
     const tags = [...new Set(allNotes.flatMap((note) => note.tags))];
 
+    console.log("Available categories:", categories);
+    console.log("Available tags:", tags);
+
     setAvailableCategories(categories.sort());
     setAvailableTags(tags.sort());
   };
 
   const applyFiltersAndSort = () => {
+    console.log("Applying filters and sort:", { sortBy, searchQuery, selectedCategories, selectedTags });
+    
     let filtered = [...notes];
 
     // Apply search query
@@ -78,11 +83,14 @@ export default function NotesList({
       filtered = filtered.filter(
         (note) =>
           note.title.toLowerCase().includes(query) ||
-          note.description.toLowerCase().includes(query) ||
+          (note.description &&
+            note.description.toLowerCase().includes(query)) ||
           note.content.toLowerCase().includes(query) ||
-          note.category.toLowerCase().includes(query) ||
-          note.tags.some((tag) => tag.toLowerCase().includes(query))
+          (note.category && note.category.toLowerCase().includes(query)) ||
+          (note.tags &&
+            note.tags.some((tag) => tag.toLowerCase().includes(query)))
       );
+      console.log("After search filter:", filtered.length);
     }
 
     // Apply category filter
@@ -90,38 +98,54 @@ export default function NotesList({
       filtered = filtered.filter((note) =>
         selectedCategories.includes(note.category)
       );
+      console.log("After category filter:", filtered.length);
     }
 
     // Apply tag filter
     if (selectedTags.length > 0) {
-      filtered = filtered.filter((note) =>
-        selectedTags.some((tag) => note.tags.includes(tag))
+      filtered = filtered.filter(
+        (note) =>
+          note.tags && note.tags.some((tag) => selectedTags.includes(tag))
       );
+      console.log("After tag filter:", filtered.length);
     }
 
-    // Apply sorting
+    // Apply sorting based on selected option
     filtered.sort((a, b) => {
       // Always show pinned notes first
       if (a.pinned && !b.pinned) return -1;
       if (!a.pinned && b.pinned) return 1;
 
       switch (sortBy) {
-        case "created":
-          return (
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-          );
-        case "title":
-          return a.title.localeCompare(b.title);
-        case "category":
-          return a.category.localeCompare(b.category);
-        case "updated":
+        case "code":
+          // Show code notes first, then sort by update time
+          if (a.category === "code" && b.category !== "code") return -1;
+          if (a.category !== "code" && b.category === "code") return 1;
+          // If both have same category priority, sort by update time
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        case "text":
+          // Show text notes first, then sort by update time
+          if (a.category === "text" && b.category !== "text") return -1;
+          if (a.category !== "text" && b.category === "text") return 1;
+          // If both have same category priority, sort by update time
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        case "json":
+          // Show JSON notes first, then sort by update time
+          if (a.category === "json" && b.category !== "json") return -1;
+          if (a.category !== "json" && b.category === "json") return 1;
+          // If both have same category priority, sort by update time
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        case "recent":
         default:
-          return (
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          );
+          // Sort by most recently updated
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       }
     });
 
+    console.log("Final filtered and sorted notes:", filtered.length);
+    console.log("Sort by:", sortBy);
+    console.log("First few notes:", filtered.slice(0, 3).map(n => ({ title: n.title, category: n.category, updatedAt: n.updatedAt })));
+    
     setFilteredNotes(filtered);
   };
 
@@ -140,14 +164,6 @@ export default function NotesList({
     window.dispatchEvent(event);
     notesStorage.deleteNote(id);
     loadNotes();
-  };
-
-  const handleShareNote = (id: string) => {
-    const note = notesStorage.getNoteById(id);
-    if (note) {
-      setShareNote(note);
-      setShareDialogOpen(true);
-    }
   };
 
   const handleCategoryToggle = (category: string, checked: boolean) => {
@@ -170,7 +186,7 @@ export default function NotesList({
     setSearchQuery("");
     setSelectedCategories([]);
     setSelectedTags([]);
-    setSortBy("updated");
+    setSortBy("recent");
   };
 
   const activeFiltersCount =
@@ -198,6 +214,59 @@ export default function NotesList({
           </Button>
         </div>
 
+        {/* Drafts Section */}
+        {(() => {
+          const draftNotes = notesStorage.getDraftNotes();
+          if (draftNotes.length > 0) {
+            return (
+              <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-lg font-semibold text-yellow-800 flex items-center gap-2">
+                    📝 Drafts ({draftNotes.length})
+                  </h2>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.history.pushState({}, "", "/new")}
+                    className="bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200"
+                  >
+                    Continue Writing
+                  </Button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {draftNotes.map((draft) => (
+                    <div
+                      key={draft.id}
+                      className="p-3 bg-white border border-yellow-200 rounded-lg cursor-pointer hover:bg-yellow-50 transition-colors"
+                      onClick={() => onNoteEdit(draft.id)}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 text-xs">
+                          Draft
+                        </Badge>
+                        <span className="text-xs text-yellow-600">
+                          {new Date(draft.updatedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <h3 className="font-medium text-yellow-900 mb-1">
+                        {draft.title === "Draft" ? "Untitled Draft" : draft.title}
+                      </h3>
+                      <p className="text-sm text-yellow-700 line-clamp-2">
+                        {draft.content.substring(0, 100)}
+                        {draft.content.length > 100 ? "..." : ""}
+                      </p>
+                      <div className="mt-2 text-xs text-yellow-600">
+                        {draft.content.length} characters
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          }
+          return null;
+        })()}
+
         <div className="flex gap-2 mb-4">
           <Input
             placeholder="Search notes by title, content, tags..."
@@ -216,10 +285,10 @@ export default function NotesList({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="updated">Recent</SelectItem>
-                <SelectItem value="created">Created</SelectItem>
-                <SelectItem value="title">A-Z</SelectItem>
-                <SelectItem value="category">Category</SelectItem>
+                <SelectItem value="recent">Recent</SelectItem>
+                <SelectItem value="code">Code</SelectItem>
+                <SelectItem value="text">Text</SelectItem>
+                <SelectItem value="json">JSON</SelectItem>
               </SelectContent>
             </Select>
             {activeFiltersCount > 0 && (
@@ -346,7 +415,6 @@ export default function NotesList({
               onEdit={() => onNoteEdit(note.id)}
               onTogglePin={() => handleTogglePin(note.id)}
               onDelete={() => handleDeleteNote(note.id)}
-              onShare={() => handleShareNote(note.id)}
             />
           ))}
         </div>
@@ -360,14 +428,6 @@ export default function NotesList({
       >
         +
       </Button>
-      {shareNote && (
-        <ShareDialog
-          open={shareDialogOpen}
-          onOpenChange={setShareDialogOpen}
-          note={shareNote}
-          setNote={setShareNote}
-        />
-      )}
     </div>
   );
 }
@@ -407,10 +467,10 @@ function FilterControls({
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="updated">Last Updated</SelectItem>
-            <SelectItem value="created">Date Created</SelectItem>
-            <SelectItem value="title">Title (A-Z)</SelectItem>
-            <SelectItem value="category">Category</SelectItem>
+            <SelectItem value="recent">Recent</SelectItem>
+            <SelectItem value="code">Code</SelectItem>
+            <SelectItem value="text">Text</SelectItem>
+            <SelectItem value="json">JSON</SelectItem>
           </SelectContent>
         </Select>
       </div>

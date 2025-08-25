@@ -14,19 +14,7 @@ import { notesStorage, type Note } from "@/lib/localStorage";
 import { exportNoteToPDF } from "@/lib/pdfExport";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import ContentWithLineNumbers from "@/components/ContentWithLineNumbers";
-import {
-  Edit,
-  Trash2,
-  Share,
-  Calendar,
-  Copy,
-  Link,
-  Facebook,
-  Twitter,
-  MessageCircle,
-  X,
-} from "lucide-react";
-import ShareDialog from "@/components/ShareDialog";
+import { Edit, Trash2, Calendar, Copy, X } from "lucide-react";
 
 interface NoteViewProps {
   noteId: string;
@@ -38,7 +26,6 @@ export default function NoteView({ noteId, onEdit, onBack }: NoteViewProps) {
   const [note, setNote] = useState<Note | null>(null);
   const [loading, setLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [showShareDialog, setShowShareDialog] = useState(false);
 
   useEffect(() => {
     const loadNote = () => {
@@ -54,7 +41,9 @@ export default function NoteView({ noteId, onEdit, onBack }: NoteViewProps) {
     if (!note) return;
 
     const noteText = `# ${note.title}\n\n${
-      note.description ? `${note.description}\n\n` : ""
+      note.description && note.description.trim()
+        ? `${note.description}\n\n`
+        : ""
     }${note.content}`;
 
     try {
@@ -99,142 +88,33 @@ export default function NoteView({ noteId, onEdit, onBack }: NoteViewProps) {
   const handleShare = async () => {
     if (!note) return;
 
-    if (note.isPublic) {
-      const shareUrl = `${window.location.origin}/note/${note.id}`;
-      try {
-        await navigator.clipboard.writeText(shareUrl);
+    const shareText = `${note.title}\n\n${
+      note.description && note.description.trim()
+        ? `${note.description}\n\n`
+        : ""
+    }${note.content}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: note.title,
+          text: shareText,
+        });
+      } else {
+        await navigator.clipboard.writeText(shareText);
         const event = new CustomEvent("show-toast", {
           detail: {
-            message: "Public note link copied to clipboard!",
+            message: "Note content copied to clipboard!",
             type: "success",
           },
         });
         window.dispatchEvent(event);
-      } catch (error) {
-        const event = new CustomEvent("show-toast", {
-          detail: { message: "Failed to copy share link.", type: "error" },
-        });
-        window.dispatchEvent(event);
       }
-    } else {
-      const shareText = `${note.title}\n\n${
-        note.description ? `${note.description}\n\n` : ""
-      }${note.content}`;
-      try {
-        if (navigator.share) {
-          await navigator.share({
-            title: note.title,
-            text: shareText,
-          });
-        } else {
-          await navigator.clipboard.writeText(shareText);
-          const event = new CustomEvent("show-toast", {
-            detail: {
-              message: "Note content copied to clipboard!",
-              type: "success",
-            },
-          });
-          window.dispatchEvent(event);
-        }
-      } catch (error) {
-        const event = new CustomEvent("show-toast", {
-          detail: { message: "Failed to share note.", type: "error" },
-        });
-        window.dispatchEvent(event);
-      }
-    }
-  };
-
-  const handleSharePublicLink = async () => {
-    if (!note) return;
-
-    try {
-      // Make note public if it isn't already
-      if (!note.isPublic) {
-        const updatedNote = { ...note, isPublic: true };
-        notesStorage.saveNote(updatedNote);
-        setNote(updatedNote);
-      }
-
-      const shareUrl = `${window.location.origin}/note/${note.id}`;
-      await navigator.clipboard.writeText(shareUrl);
-
-      const event = new CustomEvent("show-toast", {
-        detail: {
-          message: "Public link generated and copied to clipboard!",
-          type: "success",
-        },
-      });
-      window.dispatchEvent(event);
     } catch (error) {
       const event = new CustomEvent("show-toast", {
-        detail: { message: "Failed to generate public link.", type: "error" },
+        detail: { message: "Failed to share note.", type: "error" },
       });
       window.dispatchEvent(event);
     }
-  };
-
-  const handleShareToFacebook = async () => {
-    if (!note) return;
-
-    // Make note public if it isn't already
-    if (!note.isPublic) {
-      const updatedNote = { ...note, isPublic: true };
-      notesStorage.saveNote(updatedNote);
-      setNote(updatedNote);
-    }
-
-    const shareUrl = `${window.location.origin}/note/${note.id}`;
-    const shareText = `${note.title}\n\n${
-      note.description ? `${note.description}\n\n` : ""
-    }${note.content.substring(0, 200)}...`;
-
-    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
-      shareUrl
-    )}&quote=${encodeURIComponent(shareText)}`;
-    window.open(facebookUrl, "_blank", "width=600,height=400");
-  };
-
-  const handleShareToTwitter = async () => {
-    if (!note) return;
-
-    // Make note public if it isn't already
-    if (!note.isPublic) {
-      const updatedNote = { ...note, isPublic: true };
-      notesStorage.saveNote(updatedNote);
-      setNote(updatedNote);
-    }
-
-    const shareUrl = `${window.location.origin}/note/${note.id}`;
-    const shareText = `${note.title}\n\n${
-      note.description ? `${note.description}\n\n` : ""
-    }${note.content.substring(0, 100)}...`;
-
-    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
-      shareText
-    )}&url=${encodeURIComponent(shareUrl)}`;
-    window.open(twitterUrl, "_blank", "width=600,height=400");
-  };
-
-  const handleShareToWhatsApp = async () => {
-    if (!note) return;
-
-    // Make note public if it isn't already
-    if (!note.isPublic) {
-      const updatedNote = { ...note, isPublic: true };
-      notesStorage.saveNote(updatedNote);
-      setNote(updatedNote);
-    }
-
-    const shareUrl = `${window.location.origin}/note/${note.id}`;
-    const shareText = `${note.title}\n\n${
-      note.description ? `${note.description}\n\n` : ""
-    }${note.content.substring(0, 200)}...`;
-
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(
-      shareText + "\n\n" + shareUrl
-    )}`;
-    window.open(whatsappUrl, "_blank");
   };
 
   const handleExportPDF = async () => {
@@ -284,19 +164,6 @@ export default function NoteView({ noteId, onEdit, onBack }: NoteViewProps) {
       },
     });
     window.dispatchEvent(event);
-  };
-
-  const handleOpenShareDialog = () => {
-    if (!note) return;
-
-    // Make note public if it isn't already
-    if (!note.isPublic) {
-      const updatedNote = { ...note, isPublic: true };
-      notesStorage.saveNote(updatedNote);
-      setNote(updatedNote);
-    }
-
-    setShowShareDialog(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -358,7 +225,7 @@ export default function NoteView({ noteId, onEdit, onBack }: NoteViewProps) {
           {/* Left side - Title and description */}
           <div className="flex-1 mr-8">
             <h1 className="text-4xl font-bold text-white mb-2">{note.title}</h1>
-            {note.description && (
+            {note.description && note.description.trim() && (
               <p className="text-stone-400 text-lg">{note.description}</p>
             )}
           </div>
@@ -378,25 +245,19 @@ export default function NoteView({ noteId, onEdit, onBack }: NoteViewProps) {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={handleCopyNote}
+                className="h-10 w-10 p-0 bg-stone-900 border-stone-700 hover:bg-stone-800 text-white"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleDelete}
                 className="h-10 w-10 p-0 bg-stone-900 border-stone-700 hover:bg-stone-800 text-white"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleOpenShareDialog}
-                className="h-10 w-10 p-0 bg-stone-900 border-stone-700 hover:bg-stone-800 text-white"
-              >
-                <Share className="h-4 w-4" />
-              </Button>
-              <ShareDialog
-                open={showShareDialog}
-                onOpenChange={setShowShareDialog}
-                note={note}
-                setNote={setNote}
-              />
               <Button
                 variant="outline"
                 size="sm"
@@ -432,22 +293,19 @@ export default function NoteView({ noteId, onEdit, onBack }: NoteViewProps) {
           </div>
         </div>
 
-        {/* Tags and category */}
-        <div className="flex flex-wrap items-center gap-3 mb-8">
+        {/* Note Status */}
+        <div className="flex items-center gap-2 mb-4">
+          <Badge variant="outline" className="bg-slate-100 text-slate-700">
+            {note.category || "text"}
+          </Badge>
           {note.pinned && (
-            <Badge
-              variant="outline"
-              className="bg-purple-900/20 border-purple-700 text-purple-300"
-            >
+            <Badge variant="outline" className="bg-amber-100 text-amber-700">
               📌 Pinned
             </Badge>
           )}
-          {note.isPublic && (
-            <Badge
-              variant="outline"
-              className="bg-green-900/20 border-green-700 text-green-300"
-            >
-              🌐 Public
+          {note.isDraft && (
+            <Badge variant="outline" className="bg-yellow-100 text-yellow-700">
+              Draft
             </Badge>
           )}
         </div>

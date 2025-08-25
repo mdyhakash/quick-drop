@@ -3,10 +3,9 @@ export const exportNoteToPDF = async (note: {
   title: string;
   description?: string;
   content: string;
-  tags: string[];
-  category: string;
-  createdAt: string;
-  updatedAt: string;
+  category?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }) => {
   try {
     console.log("Starting PDF export for note:", note.title);
@@ -63,14 +62,17 @@ export const exportNoteToPDF = async (note: {
     }
 
     // Add metadata
-    const metadata = [
-      `Category: ${note.category}`,
-      `Created: ${new Date(note.createdAt).toLocaleDateString()}`,
-      `Updated: ${new Date(note.updatedAt).toLocaleDateString()}`,
-    ];
+    const metadata = [`Category: ${note.category || "text"}`];
 
-    if (note.tags.length > 0) {
-      metadata.push(`Tags: ${note.tags.join(", ")}`);
+    if (note.createdAt) {
+      metadata.push(
+        `Created: ${new Date(note.createdAt).toLocaleDateString()}`
+      );
+    }
+    if (note.updatedAt) {
+      metadata.push(
+        `Updated: ${new Date(note.updatedAt).toLocaleDateString()}`
+      );
     }
 
     doc.setFontSize(10);

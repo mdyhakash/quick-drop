@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import type { Note } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";
-import { Edit, Trash2, Share, Eye, Pin, PinOff } from "lucide-react";
+import { Edit, Trash2, Eye, Pin, PinOff } from "lucide-react";
 
 interface NoteCardProps {
   note: Note;
@@ -16,7 +16,6 @@ interface NoteCardProps {
   onEdit: () => void;
   onTogglePin: () => void;
   onDelete: () => void;
-  onShare: () => void;
 }
 
 export default function NoteCard({
@@ -25,7 +24,6 @@ export default function NoteCard({
   onEdit,
   onTogglePin,
   onDelete,
-  onShare,
 }: NoteCardProps) {
   const { toast } = useToast();
 
@@ -81,11 +79,6 @@ export default function NoteCard({
       },
     });
     window.dispatchEvent(event);
-  };
-
-  const handleShare = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onShare();
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -146,15 +139,6 @@ export default function NoteCard({
         <Button
           variant="ghost"
           size="sm"
-          onClick={handleShare}
-          className="h-8 w-8 p-0 bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 backdrop-blur-sm transition-all hover:scale-110"
-          title="Share note"
-        >
-          <Share className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
           onClick={handleDelete}
           className="h-8 w-8 p-0 bg-red-500/20 text-red-400 hover:bg-red-500/30 backdrop-blur-sm transition-all hover:scale-110"
           title="Delete note"
@@ -163,29 +147,37 @@ export default function NoteCard({
         </Button>
       </div>
 
-      <CardHeader className="pb-3 cursor-pointer" onClick={handleView}>
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0 pr-12">
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold truncate text-base">{note.title}</h3>
-              {note.pinned && <span className="text-sm flex-shrink-0">📌</span>}
-              {note.isPublic && (
-                <Badge
-                  variant="outline"
-                  className="text-xs bg-green-500/10 text-green-600 border-green-200"
-                >
-                  🌐 Public
-                </Badge>
-              )}
-            </div>
-            {note.description && (
-              <p className="text-sm text-muted-foreground truncate">
-                {note.description}
-              </p>
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-semibold text-foreground truncate">
+              {note.title === "Draft" ? "Untitled Draft" : note.title}
+            </h3>
+            {note.isDraft && (
+              <Badge
+                variant="secondary"
+                className="bg-yellow-100 text-yellow-800 text-xs"
+              >
+                Draft
+              </Badge>
             )}
           </div>
+          {note.description && note.description.trim() && (
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {note.description}
+            </p>
+          )}
         </div>
-      </CardHeader>
+        {note.pinned && (
+          <Badge
+            variant="outline"
+            className="bg-purple-100 text-purple-700 border-purple-300 text-xs"
+          >
+            📌
+          </Badge>
+        )}
+      </div>
 
       <CardContent className="pt-0 cursor-pointer" onClick={handleView}>
         {/* Content Preview */}
@@ -195,9 +187,9 @@ export default function NoteCard({
           </p>
         )}
 
-        {(note.tags || []).length > 0 && (
+        {note.tags && note.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
-            {(note.tags || []).slice(0, 4).map((tag, index) => {
+            {note.tags.slice(0, 4).map((tag, index) => {
               const tagColors = [
                 "bg-purple-100 text-purple-700 border-purple-200",
                 "bg-pink-100 text-pink-700 border-pink-200",
@@ -216,12 +208,12 @@ export default function NoteCard({
                 </Badge>
               );
             })}
-            {(note.tags || []).length > 4 && (
+            {note.tags.length > 4 && (
               <Badge
                 variant="outline"
                 className="text-xs bg-slate-100 text-slate-600"
               >
-                +{(note.tags || []).length - 4}
+                +{note.tags.length - 4}
               </Badge>
             )}
           </div>
@@ -229,7 +221,9 @@ export default function NoteCard({
 
         {/* Footer */}
         <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/50">
-          <span className="truncate font-medium">{note.category}</span>
+          <span className="truncate font-medium">
+            {note.category || "text"}
+          </span>
           <span className="flex-shrink-0 ml-2">
             {formatDate(note.updatedAt)}
           </span>

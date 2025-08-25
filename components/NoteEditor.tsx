@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { notesStorage } from "@/lib/localStorage";
 
 interface NoteEditorProps {
   initialNote?: {
@@ -15,6 +19,7 @@ interface NoteEditorProps {
     title: string;
     content: string;
     category?: string;
+    isDraft?: boolean;
   };
   onSave: (note: any) => void;
   onCancel: () => void;
@@ -35,6 +40,7 @@ export default function NoteEditor({
   const [charCount, setCharCount] = useState(0);
   const [lineCount, setLineCount] = useState(0);
   const [category, setCategory] = useState(initialNote?.category || "text");
+  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -76,56 +82,71 @@ export default function NoteEditor({
     setLineCount(lines);
   }, [content]);
 
-  const handleSave = async () => {
-    let finalTitle = title.trim();
-    if (!finalTitle) {
-      finalTitle = `Note ${new Date().toLocaleDateString()}`;
-      setTitle(finalTitle);
+  // Auto-save draft functionality
+  useEffect(() => {
+    // Clear existing timer
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer);
     }
 
-    if (!content.trim()) {
+    // Set new timer for auto-save (2 seconds after last change)
+    const timer = setTimeout(() => {
+      if (content.trim() || title.trim()) {
+        const draftData = {
+          id: initialNote?.id,
+          title: title.trim() || "Draft",
+          content: content.trim(),
+          category,
+        };
+        
+        notesStorage.autoSaveDraft(draftData);
+        console.log("Auto-saved draft");
+      }
+    }, 2000);
+
+    setAutoSaveTimer(timer);
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [title, content, category, initialNote?.id]);
+
+  const handleSave = async () => {
+    if (!title.trim() && !content.trim()) {
       const event = new CustomEvent("show-toast", {
-        detail: {
-          message: "Please add some content to your note.",
-          type: "error",
-        },
+        detail: { message: "Please add a title or content before saving.", type: "error" },
       });
       window.dispatchEvent(event);
       return;
     }
 
     setIsSaving(true);
+    
     try {
       const noteData = {
-        ...(initialNote?.id && { id: initialNote.id }),
-        title: finalTitle,
+        id: initialNote?.id,
+        title: title.trim() || "Untitled",
         content: content.trim(),
         category,
       };
 
-      onSave(noteData);
-
-      const draftKey = isEditing
-        ? `notebook-edit-note-draft-${initialNote?.id}`
-        : "notebook-new-note-draft";
-      localStorage.removeItem(draftKey);
+      // If this was a draft, publish it
+      if (initialNote?.isDraft) {
+        notesStorage.publishDraft(initialNote.id);
+      } else {
+        notesStorage.saveNote(noteData);
+      }
 
       const event = new CustomEvent("show-toast", {
-        detail: {
-          message: isEditing
-            ? "Note updated successfully!"
-            : "Note saved successfully!",
-          type: "success",
-        },
+        detail: { message: "Note saved successfully!", type: "success" },
       });
       window.dispatchEvent(event);
+
+      onSave(noteData);
     } catch (error) {
-      console.error("Failed to save note:", error);
+      console.error("Error saving note:", error);
       const event = new CustomEvent("show-toast", {
-        detail: {
-          message: "Failed to save note. Please try again.",
-          type: "error",
-        },
+        detail: { message: "Failed to save note. Please try again.", type: "error" },
       });
       window.dispatchEvent(event);
     } finally {
@@ -134,19 +155,16 @@ export default function NoteEditor({
   };
 
   const handleCancel = () => {
-    const hasChanges =
-      title !== (initialNote?.title || "") ||
-      content !== (initialNote?.content || "");
+    const hasChanges = 
+      title !== (initialNote?.title || "") || 
+      content !== (initialNote?.content || "") || 
+      category !== (initialNote?.category || "text");
 
     if (hasChanges) {
       const event = new CustomEvent("show-confirmation", {
         detail: {
-          message: "You have unsaved changes. Are you sure you want to cancel?",
+          message: "You have unsaved changes. Are you sure you want to discard them?",
           onConfirm: () => {
-            const draftKey = isEditing
-              ? `notebook-edit-note-draft-${initialNote?.id}`
-              : "notebook-new-note-draft";
-            localStorage.removeItem(draftKey);
             onCancel();
           },
         },
@@ -189,226 +207,128 @@ export default function NoteEditor({
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-10 bg-background border-b p-4 md:hidden">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="max-w-4xl mx-auto p-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
             <Button
-              variant="outline"
-              size="sm"
               onClick={handleCancel}
-              className="bg-gradient-to-r from-pink-500 to-rose-500 text-white border-0 hover:from-pink-600 hover:to-rose-600"
+              variant="outline"
+              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
             >
-              ← Back
+              ← Cancel
             </Button>
-            <div>
-              <h1 className="text-xl font-bold">
-                {isEditing ? "Edit Note" : "New Note"}
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">
+                {initialNote ? "Edit Note" : "New Note"}
               </h1>
-              <p className="text-xs text-muted-foreground">
-                Auto-saves every 2s
-              </p>
+              {initialNote?.isDraft && (
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                  Draft
+                </Badge>
+              )}
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="hidden md:block p-4 max-w-6xl mx-auto">
-        <div className="mb-6 flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            className="bg-gradient-to-r from-purple-500 to-violet-500 text-white border-0 hover:from-purple-600 hover:to-violet-600"
-          >
-            ← Back
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold mb-2">
-              {isEditing ? "Edit Note" : "Create New Note"}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Auto-saves as draft every 2 seconds
-            </p>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+            >
+              {isSaving ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  Saving...
+                </div>
+              ) : (
+                "Save Note"
+              )}
+            </Button>
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto">
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>Note Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        {/* Note Details Card */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle>Note Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="title" className="text-sm font-medium">
-                  Title
-                </label>
+                <Label htmlFor="title">Title</Label>
                 <Input
                   id="title"
-                  placeholder="Enter note title..."
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  placeholder={initialNote?.isDraft ? "Draft" : "Enter note title..."}
                   className="mt-1"
                 />
+                {initialNote?.isDraft && title === "Draft" && (
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Change the title to save as a regular note
+                  </p>
+                )}
               </div>
-
               <div>
-                <label htmlFor="category" className="text-sm font-medium">
-                  Category
-                </label>
+                <Label htmlFor="category">Category</Label>
                 <select
                   id="category"
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="mt-1 w-full rounded border px-3 py-2 bg-background text-foreground"
+                  className="mt-1 w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
                 >
                   <option value="text">Text</option>
                   <option value="code">Code</option>
                   <option value="json">JSON</option>
                 </select>
               </div>
+            </div>
+            
+            {/* Word/Character/Line Count */}
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+              <span>Words: {content.trim() ? content.trim().split(/\s+/).length : 0}</span>
+              <span>Characters: {content.length}</span>
+              <span>Lines: {content.split('\n').length}</span>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div className="text-sm text-muted-foreground space-y-1 pt-2 border-t">
-                <div>Words: {wordCount}</div>
-                <div>Characters: {charCount}</div>
-                <div>Lines: {lineCount}</div>
+        {/* Content Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Content</CardTitle>
+            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "write" | "preview")}>
+              <TabsList>
+                <TabsTrigger value="write">Write</TabsTrigger>
+                <TabsTrigger value="preview">Preview</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </CardHeader>
+          <CardContent>
+            {activeTab === "write" ? (
+              <Textarea
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Start writing your note..."
+                className="min-h-[400px] resize-none border-0 focus-visible:ring-0 text-base leading-relaxed"
+              />
+            ) : (
+              <div className="min-h-[400px] prose prose-stone max-w-none">
+                <MarkdownRenderer content={content || "No content to preview."} />
               </div>
-            </CardContent>
-          </Card>
+            )}
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle>Content</CardTitle>
-                <Tabs
-                  value={activeTab}
-                  onValueChange={(value) =>
-                    setActiveTab(value as "write" | "preview")
-                  }
-                >
-                  <TabsList>
-                    <TabsTrigger value="write">Write</TabsTrigger>
-                    <TabsTrigger value="preview">Preview</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <Tabs value={activeTab} className="w-full">
-                <TabsContent value="write" className="space-y-4">
-                  <div className="flex border rounded-lg overflow-hidden">
-                    <LineNumbers content={content} />
-                    <Textarea
-                      ref={textareaRef}
-                      placeholder="Write your note content here..."
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      className="min-h-[400px] resize-y font-mono text-sm border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                    />
-                  </div>
-                </TabsContent>
-                <TabsContent value="preview">
-                  <div className="min-h-[400px] p-4 border rounded-lg bg-background">
-                    {renderPlainContent(content)}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-3 mt-6">
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-            >
-              {isSaving
-                ? "Saving..."
-                : isEditing
-                ? "Save Changes"
-                : "Save Note"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSaving}
-              className="h-12 px-6 bg-gradient-to-r from-rose-500 to-pink-500 text-white border-0 hover:from-rose-600 hover:to-pink-600"
-            >
-              Cancel
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <div className="md:hidden">
-        <div className="p-4">
-          <div className="mb-4">
-            <label htmlFor="mobile-title" className="text-sm font-medium">
-              Title
-            </label>
-            <Input
-              id="mobile-title"
-              placeholder="Enter note title..."
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="mt-1"
-            />
-          </div>
-
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) =>
-              setActiveTab(value as "write" | "preview")
-            }
-            className="w-full"
-          >
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="write">Write</TabsTrigger>
-              <TabsTrigger value="preview">Preview</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="write" className="space-y-4">
-              <div className="flex border rounded-lg overflow-hidden">
-                <LineNumbers content={content} />
-                <Textarea
-                  ref={textareaRef}
-                  placeholder="Write your note content here..."
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                  className="min-h-[60vh] resize-none font-mono text-base leading-relaxed border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-              </div>
-            </TabsContent>
-
-            <TabsContent value="preview">
-              <div className="min-h-[60vh] p-4 border rounded-lg bg-background">
-                {renderPlainContent(content)}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </div>
-
-        <div className="sticky bottom-0 bg-background border-t p-4 pb-24">
-          <div className="flex gap-3">
-            <Button
-              onClick={handleSave}
-              disabled={isSaving}
-              className="flex-1 h-12 text-base bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600"
-            >
-              {isSaving
-                ? "Saving..."
-                : isEditing
-                ? "Save Changes"
-                : "Save Note"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSaving}
-              className="h-12 px-6 bg-gradient-to-r from-rose-500 to-pink-500 text-white border-0 hover:from-rose-600 hover:to-pink-600"
-            >
-              Cancel
-            </Button>
-          </div>
+        {/* Mobile Title Input */}
+        <div className="md:hidden mt-4">
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={initialNote?.isDraft ? "Draft" : "Enter note title..."}
+            className="mb-4"
+          />
         </div>
       </div>
     </div>

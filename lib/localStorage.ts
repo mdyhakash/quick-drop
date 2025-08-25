@@ -1,13 +1,14 @@
 export interface Note {
   id: string;
   title: string;
-  description: string;
+  description?: string;
   content: string;
+  category: string;
+  tags: string[];
   pinned: boolean;
-  isPublic: boolean;
+  isDraft: boolean;
   createdAt: string;
   updatedAt: string;
-  deleted: boolean;
 }
 
 const NOTES_KEY = "notebook-notes";
@@ -26,12 +27,17 @@ export const notesStorage = {
 
   // Get active (non-deleted) notes
   getActiveNotes(): Note[] {
-    return this.getAllNotes().filter((note) => !note.deleted);
+    return this.getAllNotes().filter((note) => !note.isDraft);
   },
 
   // Get deleted notes
   getDeletedNotes(): Note[] {
     return this.getAllNotes().filter((note) => note.deleted);
+  },
+
+  // Get draft notes
+  getDraftNotes(): Note[] {
+    return this.getAllNotes().filter((note) => note.isDraft);
   },
 
   // Get note by ID
@@ -61,8 +67,10 @@ export const notesStorage = {
       title: note.title || "Untitled",
       description: note.description || "",
       content: note.content || "",
+      category: note.category || "text",
+      tags: note.tags || [],
       pinned: note.pinned || false,
-      isPublic: note.isPublic || false,
+      isDraft: note.isDraft || false,
       createdAt: now,
       updatedAt: now,
       deleted: false,
@@ -134,5 +142,43 @@ export const notesStorage = {
         note.description.toLowerCase().includes(lowercaseQuery) ||
         note.content.toLowerCase().includes(lowercaseQuery)
     );
+  },
+
+  // Auto-save draft functionality
+  autoSaveDraft: (noteData: Partial<Note>): Note => {
+    const now = new Date().toISOString();
+
+    // If no title is provided or title is empty, set as draft
+    const isDraft =
+      !noteData.title || noteData.title.trim() === "" || noteData.isDraft;
+
+    const draftData: Partial<Note> = {
+      ...noteData,
+      title: noteData.title && noteData.title.trim() ? noteData.title : "Draft",
+      isDraft: true,
+      updatedAt: now,
+    };
+
+    // If this is a new draft, set createdAt
+    if (!noteData.id) {
+      draftData.createdAt = now;
+    }
+
+    return notesStorage.saveNote(draftData);
+  },
+
+  // Convert draft to regular note
+  publishDraft: (id: string): Note | null => {
+    const note = notesStorage.getNoteById(id);
+    if (!note || !note.isDraft) return null;
+
+    const publishedNote = {
+      ...note,
+      isDraft: false,
+      title: note.title === "Draft" ? "Untitled" : note.title,
+      updatedAt: new Date().toISOString(),
+    };
+
+    return notesStorage.saveNote(publishedNote);
   },
 };

@@ -43,14 +43,17 @@ export default function NotebookApp() {
 
     if (path === "/new") {
       setCurrentRoute("new");
+      setCurrentNoteId(null);
     } else if (path === "/trash") {
       setCurrentRoute("trash");
+      setCurrentNoteId(null);
     } else if (path.startsWith("/note/") && noteId) {
       const isEdit = searchParams.get("edit") === "true";
       setCurrentRoute(isEdit ? "edit" : "view");
       setCurrentNoteId(noteId);
     } else {
       setCurrentRoute("notes");
+      setCurrentNoteId(null);
     }
   }, [searchParams]);
 
@@ -92,6 +95,11 @@ export default function NotebookApp() {
   }, []);
 
   const navigate = (route: Route, noteId?: string) => {
+    // Prevent unnecessary re-renders if we're already on the same route
+    if (currentRoute === route && currentNoteId === noteId) {
+      return;
+    }
+
     setCurrentRoute(route);
     setCurrentNoteId(noteId || null);
 
@@ -102,7 +110,10 @@ export default function NotebookApp() {
     else if (route === "view" && noteId) url = `/note/${noteId}`;
     else if (route === "edit" && noteId) url = `/note/${noteId}?edit=true`;
 
-    window.history.pushState({}, "", url);
+    // Only update URL if it's different from current
+    if (window.location.pathname + window.location.search !== url) {
+      window.history.pushState({}, "", url);
+    }
   };
 
   const handleWelcomeClose = () => {
@@ -119,29 +130,35 @@ export default function NotebookApp() {
           />
         );
       case "view":
-        return currentNoteId ? (
+        if (!currentNoteId) {
+          return (
+            <NotesList
+              onNoteSelect={(id) => navigate("view", id)}
+              onNoteEdit={(id) => navigate("edit", id)}
+            />
+          );
+        }
+        return (
           <NoteView
             noteId={currentNoteId}
             onEdit={() => navigate("edit", currentNoteId)}
             onBack={() => navigate("notes")}
           />
-        ) : (
-          <NotesList
-            onNoteSelect={(id) => navigate("view", id)}
-            onNoteEdit={(id) => navigate("edit", id)}
-          />
         );
       case "edit":
-        return currentNoteId ? (
+        if (!currentNoteId) {
+          return (
+            <NotesList
+              onNoteSelect={(id) => navigate("view", id)}
+              onNoteEdit={(id) => navigate("edit", id)}
+            />
+          );
+        }
+        return (
           <NoteEdit
             noteId={currentNoteId}
             onSave={() => navigate("view", currentNoteId)}
             onCancel={() => navigate("view", currentNoteId)}
-          />
-        ) : (
-          <NotesList
-            onNoteSelect={(id) => navigate("view", id)}
-            onNoteEdit={(id) => navigate("edit", id)}
           />
         );
       case "trash":

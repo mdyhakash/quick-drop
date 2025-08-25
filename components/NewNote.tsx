@@ -10,6 +10,14 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { notesStorage } from "@/lib/localStorage";
+import { ArrowLeft } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface NewNoteProps {
   onSave: () => void;
@@ -58,6 +66,10 @@ export default function NewNote({ onSave, onCancel }: NewNoteProps) {
         setDraftId(null);
       }
 
+      // Notify lists to refresh immediately
+      const ping = new CustomEvent("refresh-notes", {});
+      window.dispatchEvent(ping);
+
       const event = new CustomEvent("show-toast", {
         detail: { message: "Note saved successfully!", type: "success" },
       });
@@ -104,10 +116,11 @@ export default function NewNote({ onSave, onCancel }: NewNoteProps) {
           <div className="flex items-center gap-4">
             <Button
               onClick={handleCancel}
-              variant="outline"
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+              variant="ghost"
+              className="h-10 w-10 p-0 text-white hover:bg-white/10"
+              title="Back"
             >
-              ← Cancel
+              <ArrowLeft className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold">New Note</h1>
@@ -166,16 +179,16 @@ export default function NewNote({ onSave, onCancel }: NewNoteProps) {
               </div>
               <div>
                 <Label htmlFor="category">Category</Label>
-                <select
-                  id="category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="mt-1 w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
-                >
-                  <option value="text">Text</option>
-                  <option value="code">Code</option>
-                  <option value="json">JSON</option>
-                </select>
+                <Select value={category} onValueChange={(v) => setCategory(v)}>
+                  <SelectTrigger id="category" className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="text">Text</SelectItem>
+                    <SelectItem value="code">Code</SelectItem>
+                    <SelectItem value="json">JSON</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

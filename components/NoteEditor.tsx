@@ -40,7 +40,9 @@ export default function NoteEditor({
   const [charCount, setCharCount] = useState(0);
   const [lineCount, setLineCount] = useState(0);
   const [category, setCategory] = useState(initialNote?.category || "text");
-  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
+  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(
+    null
+  );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -98,7 +100,7 @@ export default function NoteEditor({
           content: content.trim(),
           category,
         };
-        
+
         notesStorage.autoSaveDraft(draftData);
         console.log("Auto-saved draft");
       }
@@ -114,14 +116,17 @@ export default function NoteEditor({
   const handleSave = async () => {
     if (!title.trim() && !content.trim()) {
       const event = new CustomEvent("show-toast", {
-        detail: { message: "Please add a title or content before saving.", type: "error" },
+        detail: {
+          message: "Please add a title or content before saving.",
+          type: "error",
+        },
       });
       window.dispatchEvent(event);
       return;
     }
 
     setIsSaving(true);
-    
+
     try {
       const noteData = {
         id: initialNote?.id,
@@ -146,7 +151,10 @@ export default function NoteEditor({
     } catch (error) {
       console.error("Error saving note:", error);
       const event = new CustomEvent("show-toast", {
-        detail: { message: "Failed to save note. Please try again.", type: "error" },
+        detail: {
+          message: "Failed to save note. Please try again.",
+          type: "error",
+        },
       });
       window.dispatchEvent(event);
     } finally {
@@ -155,15 +163,16 @@ export default function NoteEditor({
   };
 
   const handleCancel = () => {
-    const hasChanges = 
-      title !== (initialNote?.title || "") || 
-      content !== (initialNote?.content || "") || 
+    const hasChanges =
+      title !== (initialNote?.title || "") ||
+      content !== (initialNote?.content || "") ||
       category !== (initialNote?.category || "text");
 
     if (hasChanges) {
       const event = new CustomEvent("show-confirmation", {
         detail: {
-          message: "You have unsaved changes. Are you sure you want to discard them?",
+          message:
+            "You have unsaved changes. Are you sure you want to discard them?",
           onConfirm: () => {
             onCancel();
           },
@@ -224,7 +233,10 @@ export default function NoteEditor({
                 {initialNote ? "Edit Note" : "New Note"}
               </h1>
               {initialNote?.isDraft && (
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                <Badge
+                  variant="secondary"
+                  className="bg-yellow-100 text-yellow-800"
+                >
                   Draft
                 </Badge>
               )}
@@ -261,7 +273,9 @@ export default function NoteEditor({
                   id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder={initialNote?.isDraft ? "Draft" : "Enter note title..."}
+                  placeholder={
+                    initialNote?.isDraft ? "Draft" : "Enter note title..."
+                  }
                   className="mt-1"
                 />
                 {initialNote?.isDraft && title === "Draft" && (
@@ -284,12 +298,14 @@ export default function NoteEditor({
                 </select>
               </div>
             </div>
-            
+
             {/* Word/Character/Line Count */}
             <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-              <span>Words: {content.trim() ? content.trim().split(/\s+/).length : 0}</span>
+              <span>
+                Words: {content.trim() ? content.trim().split(/\s+/).length : 0}
+              </span>
               <span>Characters: {content.length}</span>
-              <span>Lines: {content.split('\n').length}</span>
+              <span>Lines: {content.split("\n").length}</span>
             </div>
           </CardContent>
         </Card>
@@ -298,7 +314,12 @@ export default function NoteEditor({
         <Card>
           <CardHeader>
             <CardTitle>Content</CardTitle>
-            <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "write" | "preview")}>
+            <Tabs
+              value={activeTab}
+              onValueChange={(value) =>
+                setActiveTab(value as "write" | "preview")
+              }
+            >
               <TabsList>
                 <TabsTrigger value="write">Write</TabsTrigger>
                 <TabsTrigger value="preview">Preview</TabsTrigger>
@@ -315,7 +336,9 @@ export default function NoteEditor({
               />
             ) : (
               <div className="min-h-[400px] prose prose-stone max-w-none">
-                <MarkdownRenderer content={content || "No content to preview."} />
+                <MarkdownRenderer
+                  content={content || "No content to preview."}
+                />
               </div>
             )}
           </CardContent>

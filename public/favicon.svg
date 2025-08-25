@@ -1,0 +1,22 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="dropGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4facfe;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00f2fe;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <circle cx="100" cy="100" r="95" fill="url(#bgGradient)"/>
+  <rect x="70" y="60" width="60" height="80" rx="8" ry="8" fill="#fff" opacity="0.95"/>
+  <rect x="85" y="50" width="30" height="16" rx="4" ry="4" fill="#fff" opacity="0.9"/>
+  <rect x="90" y="53" width="20" height="10" rx="2" ry="2" fill="#666" opacity="0.3"/>
+  <rect x="78" y="74" width="44" height="3" rx="1.5" fill="#000" opacity="0.15"/>
+  <rect x="78" y="84" width="33" height="3" rx="1.5" fill="#000" opacity="0.15"/>
+  <rect x="78" y="94" width="40" height="3" rx="1.5" fill="#000" opacity="0.15"/>
+  <path d="M45 80 L55 70 L50 75 L60 65 L50 75 L55 80 Z" fill="url(#dropGradient)" opacity="0.9"/>
+  <path d="M145 90 L155 80 L150 85 L160 75 L150 85 L155 90 Z" fill="url(#dropGradient)" opacity="0.9"/>
+</svg>
+

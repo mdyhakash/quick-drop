@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "Quick Drop",
+  "version": "1.0.0",
+  "description": "Open the Quick Drop app instantly from the toolbar.",
+  "icons": {
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
+  },
+  "action": {
+    "default_title": "Open Quick Drop",
+    "default_popup": "popup.html"
+  },
+  "permissions": ["tabs"]
+}

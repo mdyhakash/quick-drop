@@ -139,6 +139,11 @@ quick-drop/
 │   └── pdfExport.ts
 └── hooks/
     └── use-toast.ts
+public/
+└── extension/
+    ├── manifest.json
+    ├── popup.html
+    └── popup.js
 ```
 
 ## 🎨 Theming & Responsiveness
@@ -155,3 +160,16 @@ MIT
 
 - Discussions: `https://github.com/yourusername/notebook-app/discussions`
 - Email: mdyhakash@gmail.com
+
+## 🧩 Chrome Extension
+
+Load unpacked (development):
+
+- Run the app (optional for dev discovery): `npm run dev`
+- Open `chrome://extensions`
+- Enable Developer mode
+- Click “Load unpacked” and select `public/extension`
+
+Behavior:
+
+- The popup’s button tries to open `http://localhost:3000` first; if unavailable, it opens the production URL configured in `public/extension/popup.js` (`PROD_URL`). Update that value to your deployed site.

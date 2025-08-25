@@ -221,6 +221,8 @@ export default function NoteModal({
       window.dispatchEvent(event);
 
       onNoteUpdated();
+      const ping = new CustomEvent("refresh-notes", {});
+      window.dispatchEvent(ping);
       setIsEditing(false);
       // Reload the note from storage to reflect status changes (draft -> active)
       if (note?.id) {
@@ -419,6 +421,8 @@ export default function NoteModal({
                       });
                       window.dispatchEvent(success);
                       onNoteUpdated();
+                      const ping = new CustomEvent("refresh-notes", {});
+                      window.dispatchEvent(ping);
                       onClose();
                     }}
                     variant="ghost"

@@ -58,8 +58,15 @@ export default function NotesList({
 
     const refresh = () => loadNotes();
     window.addEventListener("refresh-notes", refresh as EventListener);
-    return () =>
+    window.addEventListener("focus", refresh as EventListener);
+    window.addEventListener("pageshow", refresh as EventListener);
+    window.addEventListener("storage", refresh as EventListener);
+    return () => {
       window.removeEventListener("refresh-notes", refresh as EventListener);
+      window.removeEventListener("focus", refresh as EventListener);
+      window.removeEventListener("pageshow", refresh as EventListener);
+      window.removeEventListener("storage", refresh as EventListener);
+    };
   }, []);
 
   useEffect(() => {

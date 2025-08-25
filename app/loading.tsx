@@ -10,7 +10,7 @@ export default function Loading({ onComplete }: LoadingProps) {
   const [displayText, setDisplayText] = useState("");
   const [showCursor, setShowCursor] = useState(true);
 
-  const firstPhase = { text: "Drop it. Save it. Find it.", delay: 100 };
+  const firstPhase = { text: "Drop it. Save it. Find it.", delay: 100};
 
   useEffect(() => {
     const cursorInterval = setInterval(() => {

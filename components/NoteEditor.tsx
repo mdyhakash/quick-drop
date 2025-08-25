@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { notesStorage } from "@/lib/localStorage";
 
 interface NoteEditorProps {

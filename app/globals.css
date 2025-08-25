@@ -210,6 +210,6 @@
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #a855f7;
+    background: #44403c; /* keep consistent to avoid visual jump when focusing controls */
   }
 }

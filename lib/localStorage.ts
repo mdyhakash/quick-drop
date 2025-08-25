@@ -9,6 +9,7 @@ export interface Note {
   isDraft: boolean;
   createdAt: string;
   updatedAt: string;
+  deleted: boolean;
 }
 
 const NOTES_KEY = "notebook-notes";
@@ -27,7 +28,7 @@ export const notesStorage = {
 
   // Get active (non-deleted) notes
   getActiveNotes(): Note[] {
-    return this.getAllNotes().filter((note) => !note.isDraft);
+    return this.getAllNotes().filter((note) => !note.deleted && !note.isDraft);
   },
 
   // Get deleted notes
@@ -139,7 +140,7 @@ export const notesStorage = {
     return notes.filter(
       (note) =>
         note.title.toLowerCase().includes(lowercaseQuery) ||
-        note.description.toLowerCase().includes(lowercaseQuery) ||
+        (note.description || "").toLowerCase().includes(lowercaseQuery) ||
         note.content.toLowerCase().includes(lowercaseQuery)
     );
   },
@@ -148,10 +149,6 @@ export const notesStorage = {
   autoSaveDraft: (noteData: Partial<Note>): Note => {
     const now = new Date().toISOString();
 
-    // If no title is provided or title is empty, set as draft
-    const isDraft =
-      !noteData.title || noteData.title.trim() === "" || noteData.isDraft;
-
     const draftData: Partial<Note> = {
       ...noteData,
       title: noteData.title && noteData.title.trim() ? noteData.title : "Draft",
@@ -159,7 +156,6 @@ export const notesStorage = {
       updatedAt: now,
     };
 
-    // If this is a new draft, set createdAt
     if (!noteData.id) {
       draftData.createdAt = now;
     }
@@ -180,5 +176,16 @@ export const notesStorage = {
     };
 
     return notesStorage.saveNote(publishedNote);
+  },
+
+  // Permanently delete all drafts
+  deleteAllDrafts: (): number => {
+    const notes = notesStorage.getAllNotes();
+    const remaining = notes.filter((n) => !n.isDraft);
+    const deletedCount = notes.length - remaining.length;
+    if (deletedCount > 0) {
+      notesStorage.saveAllNotes(remaining);
+    }
+    return deletedCount;
   },
 };

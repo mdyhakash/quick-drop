@@ -1,22 +1,28 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-type Route = "notes" | "new" | "view" | "edit" | "trash"
+type Route = "notes" | "new" | "view" | "edit" | "trash";
 
 interface BottomNavProps {
-  currentRoute: Route
-  onNavigate: (route: Route) => void
+  currentRoute: Route;
+  onNavigate: (route: Route) => void;
 }
 
-export default function BottomNav({ currentRoute, onNavigate }: BottomNavProps) {
+export default function BottomNav({
+  currentRoute,
+  onNavigate,
+}: BottomNavProps) {
   const navItems = [
     {
       id: "notes" as Route,
       label: "Notes",
       icon: "📋",
-      active: currentRoute === "notes" || currentRoute === "view" || currentRoute === "edit",
+      active:
+        currentRoute === "notes" ||
+        currentRoute === "view" ||
+        currentRoute === "edit",
     },
     {
       id: "new" as Route,
@@ -24,13 +30,7 @@ export default function BottomNav({ currentRoute, onNavigate }: BottomNavProps) 
       icon: "➕",
       active: currentRoute === "new",
     },
-    {
-      id: "trash" as Route,
-      label: "Trash",
-      icon: "🗑",
-      active: currentRoute === "trash",
-    },
-  ]
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-card border-t border-border md:hidden">
@@ -43,7 +43,7 @@ export default function BottomNav({ currentRoute, onNavigate }: BottomNavProps) 
             onClick={() => onNavigate(item.id)}
             className={cn(
               "flex flex-col items-center gap-1 h-auto py-2 px-4",
-              item.active && "bg-accent text-accent-foreground",
+              item.active && "bg-accent text-accent-foreground"
             )}
           >
             <span className="text-lg">{item.icon}</span>
@@ -52,5 +52,5 @@ export default function BottomNav({ currentRoute, onNavigate }: BottomNavProps) 
         ))}
       </div>
     </nav>
-  )
+  );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { notesStorage } from "@/lib/localStorage";
 
 interface NewNoteProps {
@@ -22,39 +22,10 @@ export default function NewNote({ onSave, onCancel }: NewNoteProps) {
   const [category, setCategory] = useState("text");
   const [activeTab, setActiveTab] = useState<"write" | "preview">("write");
   const [isSaving, setIsSaving] = useState(false);
-  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(
-    null
-  );
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
 
-  // Auto-save draft functionality
-  useEffect(() => {
-    // Clear existing timer
-    if (autoSaveTimer) {
-      clearTimeout(autoSaveTimer);
-    }
-
-    // Set new timer for auto-save (2 seconds after last change)
-    const timer = setTimeout(() => {
-      if (content.trim() || title.trim()) {
-        const draftData = {
-          title: title.trim() || "Draft",
-          content: content.trim(),
-          category,
-        };
-
-        notesStorage.autoSaveDraft(draftData);
-        setLastSaved(new Date());
-        console.log("Auto-saved draft");
-      }
-    }, 2000);
-
-    setAutoSaveTimer(timer);
-
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
-  }, [title, content, category]);
+  // No autosave while typing; drafts are saved only on Cancel/back
 
   const handleSave = async () => {
     if (!title.trim() && !content.trim()) {
@@ -79,6 +50,14 @@ export default function NewNote({ onSave, onCancel }: NewNoteProps) {
 
       notesStorage.saveNote(noteData);
 
+      // If there was a draft created previously, remove it
+      if (draftId) {
+        try {
+          notesStorage.permanentlyDeleteNote(draftId);
+        } catch {}
+        setDraftId(null);
+      }
+
       const event = new CustomEvent("show-toast", {
         detail: { message: "Note saved successfully!", type: "success" },
       });
@@ -100,22 +79,21 @@ export default function NewNote({ onSave, onCancel }: NewNoteProps) {
   };
 
   const handleCancel = () => {
-    const hasChanges = title.trim() || content.trim();
-
-    if (hasChanges) {
-      const event = new CustomEvent("show-confirmation", {
-        detail: {
-          message:
-            "You have unsaved changes. Are you sure you want to discard them?",
-          onConfirm: () => {
-            onCancel();
-          },
-        },
-      });
-      window.dispatchEvent(event);
-    } else {
-      onCancel();
+    // Save draft only when user clicks back/cancel
+    if (title.trim() || content.trim()) {
+      const draftData = {
+        id: draftId || undefined,
+        title: title.trim() || "Draft",
+        content: content.trim(),
+        category,
+      };
+      const saved = notesStorage.autoSaveDraft(draftData);
+      if (!draftId) setDraftId(saved.id);
+      const ping = new CustomEvent("refresh-notes", {});
+      window.dispatchEvent(ping);
     }
+    // No confirmation needed - just go back
+    onCancel();
   };
 
   return (

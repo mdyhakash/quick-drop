@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import type { Note } from "@/lib/localStorage";
 import { cn } from "@/lib/utils";
-import { Edit, Trash2, Eye, Pin, PinOff } from "lucide-react";
+import { Edit, Trash2, Eye, Pin, PinOff, Copy } from "lucide-react";
+import { useRef } from "react";
 
 interface NoteCardProps {
   note: Note;
@@ -26,12 +27,15 @@ export default function NoteCard({
   onDelete,
 }: NoteCardProps) {
   const { toast } = useToast();
+  const deleteConfirmUntilRef = useRef<number>(0);
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleString(undefined, {
+      year: "numeric",
       month: "short",
       day: "numeric",
-      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -60,11 +64,19 @@ export default function NoteCard({
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const event = new CustomEvent("show-confirmation", {
-      detail: {
-        message: `Are you sure you want to delete "${note.title}"? This action cannot be undone.`,
-        onConfirm: () => onDelete(),
-      },
+    const now = Date.now();
+    if (now < deleteConfirmUntilRef.current) {
+      onDelete();
+      const event = new CustomEvent("show-toast", {
+        detail: { message: "Deleted successfully", type: "success" },
+      });
+      window.dispatchEvent(event);
+      deleteConfirmUntilRef.current = 0;
+      return;
+    }
+    deleteConfirmUntilRef.current = now + 3000;
+    const event = new CustomEvent("show-toast", {
+      detail: { message: "Click delete again to confirm", type: "info" },
     });
     window.dispatchEvent(event);
   };
@@ -79,6 +91,25 @@ export default function NoteCard({
       },
     });
     window.dispatchEvent(event);
+  };
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const noteText = `# ${note.title}\n\n${
+      (note.description || "").trim() ? `${note.description}\n\n` : ""
+    }${note.content}`;
+    try {
+      await navigator.clipboard.writeText(noteText);
+      const event = new CustomEvent("show-toast", {
+        detail: { message: "Text has been copied", type: "success" },
+      });
+      window.dispatchEvent(event);
+    } catch (err) {
+      const event = new CustomEvent("show-toast", {
+        detail: { message: "Failed to copy", type: "error" },
+      });
+      window.dispatchEvent(event);
+    }
   };
 
   const handleEdit = (e: React.MouseEvent) => {
@@ -139,6 +170,15 @@ export default function NoteCard({
         <Button
           variant="ghost"
           size="sm"
+          onClick={handleCopy}
+          className="h-8 w-8 p-0 bg-stone-500/20 text-stone-300 hover:bg-stone-500/30 backdrop-blur-sm transition-all hover:scale-110"
+          title="Copy note"
+        >
+          <Copy className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={handleDelete}
           className="h-8 w-8 p-0 bg-red-500/20 text-red-400 hover:bg-red-500/30 backdrop-blur-sm transition-all hover:scale-110"
           title="Delete note"
@@ -147,37 +187,29 @@ export default function NoteCard({
         </Button>
       </div>
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <h3 className="font-semibold text-foreground truncate">
-              {note.title === "Draft" ? "Untitled Draft" : note.title}
-            </h3>
-            {note.isDraft && (
-              <Badge
-                variant="secondary"
-                className="bg-yellow-100 text-yellow-800 text-xs"
-              >
-                Draft
-              </Badge>
+      <CardHeader className="pb-3 cursor-pointer" onClick={handleView}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0 pr-12">
+            <div className="flex items-center gap-2 mb-1">
+              <h3 className="font-semibold truncate text-base">{note.title}</h3>
+              {note.pinned && <span className="text-sm flex-shrink-0">📌</span>}
+              {note.isDraft && (
+                <Badge
+                  variant="outline"
+                  className="text-xs bg-yellow-100 text-yellow-700 border-yellow-300"
+                >
+                  Draft
+                </Badge>
+              )}
+            </div>
+            {note.description && (
+              <p className="text-sm text-muted-foreground truncate">
+                {note.description}
+              </p>
             )}
           </div>
-          {note.description && note.description.trim() && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {note.description}
-            </p>
-          )}
         </div>
-        {note.pinned && (
-          <Badge
-            variant="outline"
-            className="bg-purple-100 text-purple-700 border-purple-300 text-xs"
-          >
-            📌
-          </Badge>
-        )}
-      </div>
+      </CardHeader>
 
       <CardContent className="pt-0 cursor-pointer" onClick={handleView}>
         {/* Content Preview */}
@@ -185,38 +217,6 @@ export default function NoteCard({
           <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
             {truncateContent(note.content)}
           </p>
-        )}
-
-        {note.tags && note.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {note.tags.slice(0, 4).map((tag, index) => {
-              const tagColors = [
-                "bg-purple-100 text-purple-700 border-purple-200",
-                "bg-pink-100 text-pink-700 border-pink-200",
-                "bg-blue-100 text-blue-700 border-blue-200",
-                "bg-emerald-100 text-emerald-700 border-emerald-200",
-                "bg-orange-100 text-orange-700 border-orange-200",
-                "bg-indigo-100 text-indigo-700 border-indigo-200",
-              ];
-              return (
-                <Badge
-                  key={tag}
-                  variant="secondary"
-                  className={cn("text-xs", tagColors[index % tagColors.length])}
-                >
-                  {tag}
-                </Badge>
-              );
-            })}
-            {note.tags.length > 4 && (
-              <Badge
-                variant="outline"
-                className="text-xs bg-slate-100 text-slate-600"
-              >
-                +{note.tags.length - 4}
-              </Badge>
-            )}
-          </div>
         )}
 
         {/* Footer */}

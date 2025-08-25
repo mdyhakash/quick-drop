@@ -1,41 +1,38 @@
-import type React from "react";
-import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
-import { ThemeProvider } from "@/components/theme-provider";
-import "./globals.css";
+"use client";
 
-export const metadata: Metadata = {
-  title: "Quick Drop",
-  description:
-    "Quick Drop is your ultimate copy paste notebook that captures, organizes, and retrieves your clipboard history with lightning speed. Never lose that important text snippet, code block, or link again.",
-};
+import "react-toastify/dist/ReactToastify.css";
+import { ToastContainer, toast } from "react-toastify";
+import { useEffect } from "react";
+import "./globals.css";
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
+  useEffect(() => {
+    const handle = (e: any) => {
+      const { message, type } = e.detail || {};
+      if (!message) return;
+      if (type === "success") toast.success(message);
+      else if (type === "error") toast.error(message);
+      else toast.info(message);
+    };
+    window.addEventListener("show-toast", handle as EventListener);
+    return () =>
+      window.removeEventListener("show-toast", handle as EventListener);
+  }, []);
+
   return (
-    <html lang="en" className="dark">
-      <head>
-        <style>{`
-html {
-  font-family: ${GeistSans.style.fontFamily};
-  --font-sans: ${GeistSans.variable};
-  --font-mono: ${GeistMono.variable};
-}
-        `}</style>
-      </head>
-      <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          {children}
-        </ThemeProvider>
+    <html lang="en">
+      <body className="min-h-screen bg-background text-foreground">
+        {children}
+        <ToastContainer
+          position="top-right"
+          autoClose={2500}
+          hideProgressBar
+          theme="dark"
+        />
       </body>
     </html>
   );

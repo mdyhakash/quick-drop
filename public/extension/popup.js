@@ -5,7 +5,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Default to your hosted app
   const PROD_URL = "https://quick-drop-xi.vercel.app/"; // provided hosting URL
 
-  const getTargetUrl = async () => PROD_URL;
+  const getTargetUrl = async () => {
+    const sep = PROD_URL.includes("?") ? "&" : "?";
+    const cacheBust = `ext=1&_=${Date.now()}`;
+    return `${PROD_URL}${sep}${cacheBust}`;
+  };
 
   openBtn.addEventListener("click", async () => {
     const url = await getTargetUrl();
@@ -18,9 +22,16 @@ document.addEventListener("DOMContentLoaded", () => {
         for (const t of w.tabs || []) {
           const tabUrl = (t.url || "").replace(/\/$/, "");
           if (targetOrigins.some((o) => tabUrl.startsWith(o))) {
-            // Focus existing window/tab
-            if (w.id) chrome.windows.update(w.id, { focused: true });
-            if (t.id) chrome.tabs.update(t.id, { active: true });
+            // Focus existing window/tab and normalize size
+            if (w.id)
+              chrome.windows.update(w.id, {
+                focused: true,
+                width: 520,
+                height: 840,
+              });
+            if (t.id) {
+              chrome.tabs.update(t.id, { active: true });
+            }
             return;
           }
         }
